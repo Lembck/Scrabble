@@ -142,7 +142,7 @@ class Scrabble:
         x_inc, y_inc = self.get_x_y_incs(word.direction)
         if self.is_word_placeable(word):
             for i in range(len(word.text)):
-                if word.text[i] == "_" and self.cell_is_played(x, y):
+                if word.text[i] == "_" and self.cell_is_played(word.x, word.y):
                     continue
                 x, y, letter = word.x + x_inc * i, word.y + y_inc * i, word.text[i]
                 letters_played.append(Cell(x, y, self.board[x][y]))
@@ -202,6 +202,40 @@ def make_word(x, y, horizontal, text):
 
 
 Board = Scrabble()
-Board.play_word(make_word(7, 4, False, "HELLO"), False)
-Board.play_word(make_word(5, 7, True, "HE_P"))
+
+
+GAME = [make_word(3, 7, True, "DRAIN"),
+        make_word(4, 6, False, "G_OUP"),
+        make_word(6, 6, False, "Q_"),
+        make_word(2, 8, True, "ZO_"),
+        make_word(7, 3, False, "EXTI_CT"),
+        make_word(4, 4, True, "FLA_"),
+        make_word(3, 10, False, "UH"),
+        make_word(7, 8, True, "_HARM"),
+        make_word(9, 6, False, "DR_W"),
+        make_word(5, 2, False, "SU_K"),
+        make_word(2, 2, True, "VAV_"),
+        make_word(3, 1, False, "J_R"),
+        make_word(10, 8, False, "_EM"),
+        make_word(2, 11, False, "OY"),
+        make_word(7, 3, False, "_______S"),
+        make_word(2, 2, False, "_OID"),
+        make_word(1, 4, False, "BIT"),
+        make_word(0, 5, False, "GAP"),
+        make_word(11, 8, False, "_EAN"),
+        make_word(1, 12, False, "OI"),
+        make_word(0, 13, False, "BI"),
+        make_word(2, 0, True, "RAGE"),
+        make_word(0, 0, True, "EN____"),
+        make_word(7, 3, True, "_LITE"),
+        make_word(10, 4, True, "OWN"),
+        make_word(11, 2, False, "N__"),
+        make_word(12, 10, False, "REF"),
+        make_word(13, 4, False, "SECLUDE"),
+        make_word(10, 1, True, "NAIL"),
+        make_word(12, 7, True, "S_Y"),]
+
+Board.play_words(GAME)
+
+
 
