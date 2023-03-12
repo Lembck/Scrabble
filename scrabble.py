@@ -19,7 +19,6 @@ class Word:
 
 class Scrabble:
     BOARD_SIZE = 15
-    EMPTY = ' '
     
     def __init__(self):
         self.board = self.new_board()
@@ -27,21 +26,28 @@ class Scrabble:
         self.words = []
 
     def new_board(self):
-        return [[self.EMPTY] * self.BOARD_SIZE for x in range(self.BOARD_SIZE)]
+        with open("starting_board.txt", "r") as f:
+            return [x[2:-3].split("-") for x in f.readlines()]
 
-    def is_index_in_bounds(self, x, y):
+    def cell_is_in_bounds(self, x, y):
         return x <= 14 and y <= 14 and x >= 0 and y >= 0
 
-    def is_index_available(self, x, y):
-        return self.is_index_in_bounds(x,y) and self.board[x][y] == self.EMPTY
+    def cell_is_alpha(self, x, y):
+        return self.board[x][y].isalpha()
 
-    def is_a_letter(self, x, y):
-        return self.is_index_in_bounds(x,y) and self.board[x][y] != self.EMPTY
+    def cell_is_unplayed(self, x, y):
+        return self.cell_is_in_bounds(x, y) and not self.cell_is_alpha(x, y)
 
-    def iia(self, x, y, letter):
+    def cell_is_played(self, x, y):
+        return self.cell_is_in_bounds(x, y) and self.cell_is_alpha(x, y)
+
+    def cell_is_placeable(self, x, y, letter):
         if letter == "_":
-            return self.is_index_in_bounds(x, y) and self.board[x][y] != self.EMPTY
-        return self.is_index_available(x, y)
+            return self.cell_is_played(x, y)
+        return self.cell_is_unplayed(x, y)
+
+    def get_letter(self, x, y):
+        return self.board[x][y] 
 
     def set_letter(self, x, y, letter):
         self.board[x][y] = letter
@@ -50,17 +56,15 @@ class Scrabble:
         for cell in cells:
             self.set_letter(cell.x, cell.y, cell.letter)
 
-    def get_letter(self, x, y):
-        return self.board[x][y] 
-
     def get_horizontal_word(self, x, y):
-        if not self.is_index_in_bounds(x,y) or self.board[x][y] == self.EMPTY:
+        if not self.cell_is_played(x, y):
             return False
+        
         leftmost_index = x
-        while self.is_a_letter(leftmost_index - 1, y):
+        while self.cell_is_played(leftmost_index - 1, y):
             leftmost_index -= 1
         rightmost_index = x
-        while self.is_a_letter(rightmost_index + 1, y):
+        while self.cell_is_played(rightmost_index + 1, y):
             rightmost_index += 1
         if leftmost_index == rightmost_index:
             return False
@@ -69,13 +73,14 @@ class Scrabble:
         return ''.join(letters)
 
     def get_vertical_word(self, x, y):
-        if not self.is_index_in_bounds(x,y) or self.board[x][y] == self.EMPTY:
+        if not self.cell_is_played(x, y):
             return False
+        
         upmost_index = y
-        while self.is_a_letter(x, upmost_index - 1):
+        while self.cell_is_played(x, upmost_index - 1):
             upmost_index -= 1
         downmost_index = y
-        while self.is_a_letter(x, downmost_index + 1):
+        while self.cell_is_played(x, downmost_index + 1):
             downmost_index += 1
         if upmost_index == downmost_index:
             return False
@@ -105,10 +110,6 @@ class Scrabble:
         return [self.get_word(word.x, letter_y, "H") for letter_y in range(word.y, word.y + len(word.text))]
 
 
-    # requires all letters:
-    # - to be in the same row or column
-    # - to not replace existing letters on the board
-    # - to not have gaps in between
     def is_word_placeable(self, word):
         if self.fresh_game:
             ys = list(range(word.y, len(word.text)+word.y))
@@ -122,7 +123,7 @@ class Scrabble:
         
         x_inc, y_inc = self.get_x_y_incs(word.direction)
         letter_range = range(len(word.text))
-        word_placeable = all(self.iia(word.x + x_inc * i, word.y + y_inc * i, word.text[i]) for i in letter_range)
+        word_placeable = all(self.cell_is_placeable(word.x + x_inc * i, word.y + y_inc * i, word.text[i]) for i in letter_range)
 
         return word_placeable
 
@@ -134,7 +135,7 @@ class Scrabble:
         x_inc, y_inc = self.get_x_y_incs(word.direction)
         if self.is_word_placeable(word):
             for i in range(len(word.text)):
-                if word.text[i] == "_" and self.board[x][y] != self.EMPTY:
+                if word.text[i] == "_" and self.cell_is_played(x, y):
                     continue
                 x, y, letter = word.x + x_inc * i, word.y + y_inc * i, word.text[i]
                 letters_played.append(Cell(x, y, self.board[x][y]))
@@ -190,7 +191,6 @@ def make_word(x, y, horizontal, text):
 
 
 Board = Scrabble()
-Board.play_word(make_word(7, 4, False, "HELLO"))
-Board.play_word(make_word(5, 7, False, "HELP"))
-Board.display()
+Board.play_word(make_word(7, 4, False, "HELLO"), False)
+Board.play_word(make_word(5, 7, True, "HE_P"))
 
