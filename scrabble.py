@@ -1,3 +1,10 @@
+from colorama import init as colorama_init
+from colorama import Back
+from colorama import Style
+
+colorama_init()
+color_dictionary = {"@" : Back.MAGENTA, "#" : Back.RED, "2" : Back.CYAN, "3" : Back.BLUE, " " : Back.YELLOW, "-" : Back.YELLOW}
+
 def fetch_words():
     with open("scrabble_dictionary.txt", "r") as f:
         return set(tuple(x[:-1]) for x in f.readlines())
@@ -178,8 +185,12 @@ class Scrabble:
 
     def display(self):
         flipped = list(zip(*self.board))
+        def clean_up(x):
+            if x in "@#23 -":
+                return f"{color_dictionary[x]} {Back.RESET}"
+            return f"{color_dictionary[' ']}{x}"
         for column in flipped:
-            print("|", "-".join(column), "|")
+            print(f"{Style.BRIGHT}|", "".join([clean_up(x) for x in "-".join(column)]) + f"{Back.RESET}", "|")
 
 def make_word(x, y, horizontal, text):
     if x < 0 or y < 0 or x > 14 or y > 14:
