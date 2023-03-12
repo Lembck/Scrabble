@@ -1,135 +1,196 @@
-import random
-from itertools import permutations
-from itertools import product
-
 def fetch_words():
     with open("scrabble_dictionary.txt", "r") as f:
         return set(tuple(x[:-1]) for x in f.readlines())
 
 WORDS = fetch_words()
 
-def generate_bag():
-    return ['A']*9 + ['B']*2 + ['C']*2 + ['D']*4 + ['E']*12 + ['F']*2 + ['G']*3 + \
-           ['H']*2 + ['I']*9 + ['J']*1 + ['K']*1 + ['L']*4 + ['M']*2 + ['N']*6 + \
-           ['O']*8 + ['P']*2 + ['Q']*1 + ['R']*6 + ['S']*4 + ['T']*6 + ['U']*4 + \
-           ['V']*2 + ['W']*2 + ['X']*1 + ['Y']*2 + ['Z']*1
+class Cell:
+    def __init__(self, x, y, letter):
+        self.x = x
+        self.y = y
+        self.letter = letter
 
-bag = generate_bag()
+class Word:
+    def __init__(self, x, y, direction, text):
+        self.x = x
+        self.y = y
+        self.direction = direction
+        self.text = text
 
-
-def refresh_bag():
-    bag = generate_bag()
-
-def no_more_than(n, x):
-    if n > x:
-        return x
-    return n
-
-def choose_n_letters(n):
-    chosen_tiles = []
-
-    n = no_more_than(n, len(bag))
+class Scrabble:
+    BOARD_SIZE = 15
+    EMPTY = ' '
     
-    while n > 0:
-        spot = random.randrange(0, len(bag))
-        chosen_tiles.append(bag.pop(spot))
-        n -= 1
-    
-    return chosen_tiles
+    def __init__(self):
+        self.board = self.new_board()
+        self.fresh_game = True
+        self.words = []
 
-def display_board(board):
-    for x in board:
-        print(x)
+    def new_board(self):
+        return [[self.EMPTY] * self.BOARD_SIZE for x in range(self.BOARD_SIZE)]
 
-def make_empty_board():
-    return [[0] * 13 for x in range(13)]
+    def is_index_in_bounds(self, x, y):
+        return x <= 14 and y <= 14 and x >= 0 and y >= 0
 
-def set_word(word, board, spot, direction):
-    if direction == "VERTICAL":
-        direction = [1, 0]
-    else:
-        direction = [0, 1]
-    for letter in word:
-        board[spot[0]][spot[1]] = letter
-        spot[0] += direction[0]
-        spot[1] += direction[1]
-    return board
-    
-def choose_half_letters(lst):
-    half_size = len(lst) // 2
-    chosen_letters = lst[:half_size+1]
-    #leftover_letters = lst[half_size+1:]
-    return chosen_letters#, leftover_letters
+    def is_index_available(self, x, y):
+        return self.is_index_in_bounds(x,y) and self.board[x][y] == self.EMPTY
 
-def choose_halves(lst):
-    half_size = len(lst) // 2
-    chosen_letters = lst[:half_size+1]
-    leftover_letters = lst[half_size+1:]
-    return chosen_letters, leftover_letters
+    def is_a_letter(self, x, y):
+        return self.is_index_in_bounds(x,y) and self.board[x][y] != self.EMPTY
 
-def check_for_words(perms):
-    return WORDS.intersection(perms)
+    def iia(self, x, y, letter):
+        if letter == "_":
+            return self.is_index_in_bounds(x, y) and self.board[x][y] != self.EMPTY
+        return self.is_index_available(x, y)
 
-def find_unique_chars(longer_str, substring):
-    longer_list = list(longer_str)
-    substring_list = list(substring)
-    
-    for char in substring_list:
-        if char in longer_list:
-            longer_list.remove(char)
-    
-    return ''.join(longer_list)
+    def set_letter(self, x, y, letter):
+        self.board[x][y] = letter
 
-def get_adjacent_letters(word, index_of_letter):
-    adjacent_letters = []
-    if index_of_letter > 0:
-        adjacent_letters.append(word[index_of_letter-1])
-    if index_of_letter <= len(word)-2:
-        adjacent_letters.append(word[index_of_letter+1])
-    return adjacent_letters
+    def set_letters(self, cells):
+        for cell in cells:
+            self.set_letter(cell.x, cell.y, cell.letter)
 
-def faster(hand, doubled = [], adjacent = []):
-    #print("HAND", hand, "Doubled", doubled, "Adjacent", adjacent)
-    
-    if (len(hand) >= 14):
-        halves = permutations(hand, 7)
-        for half in halves:
-            if half in WORDS:
-                rest = find_unique_chars(hand, half)
-                for letter in find_unique_chars(half,  doubled):
-                    index_of_letter = half.index(letter)
-                    adjacent_letters = get_adjacent_letters(half, index_of_letter)
-                    banned_letters = half[index_of_letter:index_of_letter+1]
-                    #print("running with", half)
-                    result = faster(rest + letter, doubled + list(letter),
-                                    adjacent + adjacent_letters)
-                    if result:
-                        return (half, result)
+    def get_letter(self, x, y):
+        return self.board[x][y] 
+
+    def get_horizontal_word(self, x, y):
+        if not self.is_index_in_bounds(x,y) or self.board[x][y] == self.EMPTY:
+            return False
+        leftmost_index = x
+        while self.is_a_letter(leftmost_index - 1, y):
+            leftmost_index -= 1
+        rightmost_index = x
+        while self.is_a_letter(rightmost_index + 1, y):
+            rightmost_index += 1
+        if leftmost_index == rightmost_index:
+            return False
+        letters = [self.get_letter(i, y) for i in range(leftmost_index, rightmost_index+1)]
+
+        return ''.join(letters)
+
+    def get_vertical_word(self, x, y):
+        if not self.is_index_in_bounds(x,y) or self.board[x][y] == self.EMPTY:
+            return False
+        upmost_index = y
+        while self.is_a_letter(x, upmost_index - 1):
+            upmost_index -= 1
+        downmost_index = y
+        while self.is_a_letter(x, downmost_index + 1):
+            downmost_index += 1
+        if upmost_index == downmost_index:
+            return False
+        letters = [self.get_letter(x, i) for i in range(upmost_index, downmost_index+1)]
+
+        return ''.join(letters)
+
+    def get_word(self, x, y, direction):
+        if direction == "H":
+            return self.get_horizontal_word(x, y)
+        else:
+            return self.get_vertical_word(x, y)
+
+    def get_x_y_incs(self, direction):
+        x_inc = 1 if direction == "H" else 0
+        y_inc = 1 if direction == "V" else 0
+        return x_inc, y_inc
+
+    def opposite_direction(self, word):
+        if word.direction == "H":
+            return "V"
+        return "H"
+
+    def get_side_words(self, word):
+        if word.direction == "H":
+            return [self.get_word(letter_x, word.y, "V") for letter_x in range(word.x, word.x + len(word.text))]
+        return [self.get_word(word.x, letter_y, "H") for letter_y in range(word.y, word.y + len(word.text))]
+
+
+    # requires all letters:
+    # - to be in the same row or column
+    # - to not replace existing letters on the board
+    # - to not have gaps in between
+    def is_word_placeable(self, word):
+        if self.fresh_game:
+            ys = list(range(word.y, len(word.text)+word.y))
+            xs = list(range(word.x, len(word.text)+word.x))
+            
+            if (word.x == 7 and 7 in ys) or (word.y == 7 and 7 in xs):
+                return True
+            else:
+                return False
+
+        
+        x_inc, y_inc = self.get_x_y_incs(word.direction)
+        letter_range = range(len(word.text))
+        word_placeable = all(self.iia(word.x + x_inc * i, word.y + y_inc * i, word.text[i]) for i in letter_range)
+
+        return word_placeable
+
+
+    def play_word(self, word, display = True):
+        letters_played = []
+
+        #is every other letter placeable (is there a letter on the board for _'s)
+        x_inc, y_inc = self.get_x_y_incs(word.direction)
+        if self.is_word_placeable(word):
+            for i in range(len(word.text)):
+                if word.text[i] == "_" and self.board[x][y] != self.EMPTY:
+                    continue
+                x, y, letter = word.x + x_inc * i, word.y + y_inc * i, word.text[i]
+                letters_played.append(Cell(x, y, self.board[x][y]))
+                self.set_letter(x, y, letter)
+        else:
+            print("Please ensure the played word is on the board and doesn't overlap existing words", word.text)
+            return
+
+        def error(*args):
+            self.set_letters(letters_played)
+            print(*args)
+
+        # now check if the main word is correct
+        final_word = self.get_word(word.x, word.y, word.direction)
+        if not final_word or tuple(final_word) not in WORDS:
+            error("Sorry, that is not a word", final_word)
+
+        
+        if self.fresh_game:
+            self.fresh_game = False
+            return
+
+        side_words = self.get_side_words(word)
+        
+        if all(side_word == False for side_word in side_words):
+            error("Please ensure the played word touches existing words")
+            
+        if any(side_word and tuple(side_word) not in WORDS for side_word in side_words):
+            error("Sorry, that word created an invalid side words", side_words)
+
+        if display:
+            self.display()
+
+
+    def play_words(self, words):
+        for word in words:
+            self.play_word(word, False)
+        self.display()
         
 
-    
-    elif (len(hand) <= 7):
-        perms = permutations(''.join(hand))
-        full_matches = check_for_words(perms)
-        if full_matches:
-            return full_matches
+    def display(self):
+        flipped = list(zip(*self.board))
+        for column in flipped:
+            print("|", "-".join(column), "|")
 
-    
-    halves = permutations(hand, len(hand) // 2)
-    for half in halves:
-        if half in WORDS:
-            remaining = find_unique_chars(hand, half)
-            #print(half, doubled)
-            if doubled and doubled[-1] in half:
-                adjacent = adjacent + get_adjacent_letters(half, half.index(doubled[-1]))
-            for letter in find_unique_chars(half, doubled + adjacent):
-                second = tuple(remaining) + tuple(letter)
-                seconds = check_for_words(permutations(second))
-                if seconds:
-                    return (half, seconds, doubled + list(letter))
+def make_word(x, y, horizontal, text):
+    if x < 0 or y < 0 or x > 14 or y > 14:
+        return False
+    direction = "H" if horizontal else "V"
+    return Word(x, y, direction, text)
 
-def main(n):
-    refresh_bag()
-    hand = choose_n_letters(n)
-    print(hand)
-    return faster(hand)
+
+
+
+Board = Scrabble()
+Board.play_word(make_word(7, 4, False, "HELLO"))
+Board.play_word(make_word(5, 7, False, "HELP"))
+Board.display()
+
