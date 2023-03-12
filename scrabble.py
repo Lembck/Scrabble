@@ -1,10 +1,3 @@
-##1 point: E (x12), A (x9), I (x9), O (x8), N (x6), R (x6), T (x6), L (x4), S (x4), U (x4)
-##2 points: D (x4), G (x3)
-##3 points: B (x2), C (x2), M (x2), P (x2)
-##4 points: F (x2), H (x2), V (x2), W (x2), Y (x2)
-##5 points: K (x1)
-##8 points: J (x1), X (x1)
-##10 points: Q (x1), Z (x1)
 import random
 from itertools import permutations
 from itertools import product
@@ -12,9 +5,8 @@ from itertools import product
 def fetch_words():
     with open("scrabble_dictionary.txt", "r") as f:
         return set(tuple(x[:-1]) for x in f.readlines())
-print("fetching words")
+
 WORDS = fetch_words()
-print("fetched words")
 
 def generate_bag():
     return ['A']*9 + ['B']*2 + ['C']*2 + ['D']*4 + ['E']*12 + ['F']*2 + ['G']*3 + \
@@ -23,6 +15,7 @@ def generate_bag():
            ['V']*2 + ['W']*2 + ['X']*1 + ['Y']*2 + ['Z']*1
 
 bag = generate_bag()
+
 
 def refresh_bag():
     bag = generate_bag()
@@ -44,6 +37,23 @@ def choose_n_letters(n):
     
     return chosen_tiles
 
+def display_board(board):
+    for x in board:
+        print(x)
+
+def make_empty_board():
+    return [[0] * 13 for x in range(13)]
+
+def set_word(word, board, spot, direction):
+    if direction == "VERTICAL":
+        direction = [1, 0]
+    else:
+        direction = [0, 1]
+    for letter in word:
+        board[spot[0]][spot[1]] = letter
+        spot[0] += direction[0]
+        spot[1] += direction[1]
+    return board
     
 def choose_half_letters(lst):
     half_size = len(lst) // 2
@@ -116,74 +126,10 @@ def faster(hand, doubled = [], adjacent = []):
                 second = tuple(remaining) + tuple(letter)
                 seconds = check_for_words(permutations(second))
                 if seconds:
-                    return (half, seconds)
-
-
-def helper(hand):
-    print("HAND", hand)
-    perms = permutations(''.join(hand))
-    
-    if (len(hand) <= 7):
-        full_matches = check_for_words(perms)
-        if full_matches:
-            return full_matches
-
-    half_index = len(hand) // 2
-
-    halves = permutations(hand, half_index)
-    for half in halves:
-        if half in WORDS:
-            remaining = hand.copy()
-            for x in half:
-                remaining.remove(x)
-            for letter in half:
-                second = tuple(remaining) + tuple(letter)
-                seconds = check_for_words(permutations(second))
-                if seconds:
-                    return (half, seconds)
-            
-    return
+                    return (half, seconds, doubled + list(letter))
 
 def main(n):
     refresh_bag()
     hand = choose_n_letters(n)
     print(hand)
     return faster(hand)
-##
-##    #print("getting first halves")
-##    #first_halves = list(map(choose_half_letters, perms))
-##    #print("got them")
-##    #firsts = [x for (x,y) in halves]
-##    #seconds = [y for (x,y) in halves]
-##    
-##    #print("checking")
-##    #maybe = check_for_words(first_halves)
-##    #print("checked")
-##   # if maybe:
-##    #already_checked_first_halves = []
-##    for perm in perms:
-##        first_half, second_half = choose_halves(perm)
-##        #if first_half in already_checked_first_halves:
-##        #    continue
-##        #already_checked_first_halves.append(first_half)
-##        if first_half in WORDS:
-##            print("yes", first_half)
-##            for letter in first_half:
-##                found = check_for_words(permutations(second_half + tuple(letter)))
-##                if found:
-##                    print("Oh yea")
-##                    return (first_half, found)
-####        for word in maybe:
-####            rest = find_unique_chars(hand, word)
-####            for letter in word:
-####                found = check_for_words(permutations(rest + letter))
-####                if found:
-####                    print("Oh yea")
-####                    return (word, found)
-##
-##
-##
-##
-##
-##
-##
