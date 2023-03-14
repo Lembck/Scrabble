@@ -352,11 +352,12 @@ def row_or_column_to_template(row):
 
 def fill_template_once(template, perm, index):
     length = len(perm)
+    start = template.index('', index)
     while perm != []:
         template[template.index('', index)] = perm.pop(0)
     #if randrange(0,200000) == 713:
     #    print(template)
-    return template[index:index+length]
+    return template[start:start+length]
 
 def separate_words(filled_template):
     last_cell = None
@@ -386,7 +387,7 @@ def words_from_hand_in_template(Hand, template):
         perms = permutations(''.join(Hand), i)
         valid_words = valid_words.union(WORDS.intersection(fill_templates(template, perms)))
     if valid_words:
-        print(valid_words)
+        print(sorted(list(valid_words), key=lambda x: len(x), reverse=True))
 
 def grow_trues(boolean_list):
     result = []
@@ -408,7 +409,7 @@ def playable_columns():
     return(grow_trues(columns_with_a_letter))
         
 
-Hand = Board.bag.choose_n_letters(7)
+Hand = ['W', 'L', 'I', 'T', 'I', 'T', 'F']#Board.bag.choose_n_letters(7)
 print(Hand)
 
 for y in playable_rows():
