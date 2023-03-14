@@ -1,9 +1,16 @@
 from colorama import init as colorama_init
 from colorama import Back
 from colorama import Style
+from itertools import permutations
+from random import randrange
+from functools import reduce
+import operator
+def prod(iterable):
+    return reduce(operator.mul, iterable, 1)
 
 colorama_init()
 color_dictionary = {"@" : Back.MAGENTA, "#" : Back.RED, "2" : Back.CYAN, "3" : Back.BLUE, " " : Back.YELLOW, "-" : Back.YELLOW}
+points = {'A': 1, 'B': 3, 'C': 3, 'D': 2, 'E': 1, 'F': 4, 'G': 2, 'H': 4, 'I': 1, 'J': 8, 'K': 5, 'L': 1, 'M': 3, 'N': 1, 'O': 1, 'P': 3, 'Q': 10, 'R': 1, 'S': 1, 'T': 1, 'U': 1, 'V': 4, 'W': 4, 'X': 8, 'Y': 4, 'Z': 10}
 
 def fetch_words():
     with open("scrabble_dictionary.txt", "r") as f:
@@ -24,13 +31,75 @@ class Word:
         self.direction = direction
         self.text = text
 
+    def __str__(self):
+        return str((self.x, self.y, self.direction, self.text))
+
+    def __repr__(self):
+        return str((self.x, self.y, self.direction, self.text))
+
+    def __eq__(self, obj):
+        return isinstance(obj, Word) and obj.x == self.x and obj.y == self.y and obj.direction == self.direction and obj.text == self.text
+
+class Bag:
+    def __init__(self):
+        self.bag = self.generate_bag()
+        
+    def generate_bag(self):
+        return ['A']*9 + ['B']*2 + ['C']*2 + ['D']*4 + ['E']*12 + ['F']*2 + ['G']*3 + \
+               ['H']*2 + ['I']*9 + ['J']*1 + ['K']*1 + ['L']*4 + ['M']*2 + ['N']*6 + \
+               ['O']*8 + ['P']*2 + ['Q']*1 + ['R']*6 + ['S']*4 + ['T']*6 + ['U']*4 + \
+               ['V']*2 + ['W']*2 + ['X']*1 + ['Y']*2 + ['Z']*1
+
+
+    def choose_n_letters(self, n):
+        chosen_tiles = []
+
+        n = min(n, len(self.bag))
+        
+        while n > 0:
+            spot = randrange(0, len(self.bag))
+            chosen_tiles.append(self.bag.pop(spot))
+            n -= 1
+        
+        return chosen_tiles
+
 class Scrabble:
     BOARD_SIZE = 15
     
-    def __init__(self):
+    def __init__(self, player_count):
         self.board = self.new_board()
         self.fresh_game = True
+        self.bag = Bag()
+        self.players = player_count
+        self.current_player = 0
+        self.points = [0] * player_count
         self.words = []
+
+    def award_current_player(self, x):
+        self.points[self.current_player] += x
+
+    def next_player(self):
+        self.current_player = (self.current_player + 1) % self.players
+
+    def calculate_points(self, multipliers):
+        def word_multiplier(x):
+            if x == "@":
+                return 2
+            elif x == "#":
+                return 3
+            return 1
+
+        def to_number(x):
+            if str(x).isnumeric():
+                return int(x)
+            return 1
+
+        def letter_multiplier(letter_pair):
+            return points[letter_pair[0]] * to_number(letter_pair[1])
+            
+        word_multiplier = prod([word_multiplier(multiplier[1]) for multiplier in multipliers])
+        letter_values = sum([letter_multiplier(multiplier) for multiplier in multipliers])
+        return word_multiplier * letter_values
 
     def new_board(self):
         with open("starting_board.txt", "r") as f:
@@ -77,7 +146,7 @@ class Scrabble:
             return False
         letters = [self.get_letter(i, y) for i in range(leftmost_index, rightmost_index+1)]
 
-        return ''.join(letters)
+        return [Word(leftmost_index, y, "H", ''.join(letters)), (x,y)]
 
     def get_vertical_word(self, x, y):
         if not self.cell_is_played(x, y):
@@ -93,7 +162,7 @@ class Scrabble:
             return False
         letters = [self.get_letter(x, i) for i in range(upmost_index, downmost_index+1)]
 
-        return ''.join(letters)
+        return [Word(x, upmost_index, "V", ''.join(letters)), (x,y)]
 
     def get_word(self, x, y, direction):
         if direction == "H":
@@ -136,46 +205,72 @@ class Scrabble:
 
 
     def play_word(self, word, display = True):
-        letters_played = []
+        cells_played = []
+        multipliers = {}
 
         #is every other letter placeable (is there a letter on the board for _'s)
         x_inc, y_inc = self.get_x_y_incs(word.direction)
         if self.is_word_placeable(word):
             for i in range(len(word.text)):
-                if word.text[i] == "_" and self.cell_is_played(word.x, word.y):
-                    continue
                 x, y, letter = word.x + x_inc * i, word.y + y_inc * i, word.text[i]
-                letters_played.append(Cell(x, y, self.board[x][y]))
+                if letter == "_" and self.cell_is_played(x, y):
+                    multipliers[(x,y)] = (self.board[x][y], self.board[x][y])
+                    word.text = word.text[:i] + self.board[x][y] + word.text[i+1:]
+                    continue
+                
+                cells_played.append(Cell(x, y, self.board[x][y]))
+                multipliers[(x,y)] = (word.text[i], self.board[x][y])
                 self.set_letter(x, y, letter)
         else:
             print("Please ensure the played word is on the board and doesn't overlap existing words", word.text)
             return
 
         def error(*args):
-            self.set_letters(letters_played)
+            self.set_letters(cells_played)
             print(*args)
+            return
 
+
+        result = [(word.text, self.calculate_points(list(multipliers.values())))]
         # now check if the main word is correct
-        final_word = self.get_word(word.x, word.y, word.direction)
+        final_word = self.get_word(word.x, word.y, word.direction)[0].text
         if not final_word or tuple(final_word) not in WORDS:
             error("Sorry, that is not a word", final_word)
 
         
         if self.fresh_game:
             self.fresh_game = False
-            return
-
-        side_words = self.get_side_words(word)
-        
-        if all(side_word == False for side_word in side_words):
-            error("Please ensure the played word touches existing words")
+        else:
+            side_words = self.get_side_words(word)
             
-        if any(side_word and tuple(side_word) not in WORDS for side_word in side_words):
-            error("Sorry, that word created an invalid side words", side_words)
+            if all(side_word == False for side_word in side_words):
+                error("Please ensure the played word touches existing words")
+                
+            if any(side_word and tuple(side_word[0].text) not in WORDS for side_word in side_words):
+                error("Sorry, that word created an invalid side words", side_words)
+
+            for side_word in side_words:
+                if side_word and side_word[0] not in self.words:
+                    text = side_word[0].text
+                    def calculate_multiplier(i):
+                        x_s, y_s, d = side_word[0].x, side_word[0].y, side_word[0].direction
+                        x_inc, y_inc = self.get_x_y_incs(d)
+                        letter_spot = (x_s + x_inc * i, y_s + y_inc * i)
+                        if letter_spot in multipliers:
+                            return multipliers[letter_spot][1]
+                        return ' '
+                    side_word_multipliers = [(text[i], calculate_multiplier(i)) for i in range(len(text))]
+                    print(text, side_word_multipliers)
+                    result.append((text, self.calculate_points(side_word_multipliers)))
+                    self.words.append(side_word[0])
 
         if display:
             self.display()
 
+        self.words.append(word)
+        
+        return result
+        
 
     def play_words(self, words):
         for word in words:
@@ -183,14 +278,17 @@ class Scrabble:
         self.display()
         
 
-    def display(self):
+    def display(self, colored=False):
         flipped = list(zip(*self.board))
         def clean_up(x):
             if x in "@#23 -":
                 return f"{color_dictionary[x]} {Back.RESET}"
             return f"{color_dictionary[' ']}{x}"
         for column in flipped:
-            print(f"{Style.BRIGHT}|", "".join([clean_up(x) for x in "-".join(column)]) + f"{Back.RESET}", "|")
+            if colored:
+                print(f"{Style.BRIGHT}|", "".join([clean_up(x) for x in "-".join(column)]) + f"{Back.RESET}", "|")
+            else:
+                print("|", "-".join(column), "|")
 
 def make_word(x, y, horizontal, text):
     if x < 0 or y < 0 or x > 14 or y > 14:
@@ -201,10 +299,9 @@ def make_word(x, y, horizontal, text):
 
 
 
-Board = Scrabble()
+Board = Scrabble(2)
 
-
-GAME = [make_word(3, 7, True, "DRAIN"),
+EXAMPLE_GAME = [make_word(3, 7, True, "DRAIN"),
         make_word(4, 6, False, "G_OUP"),
         make_word(6, 6, False, "Q_"),
         make_word(2, 8, True, "ZO_"),
@@ -235,7 +332,27 @@ GAME = [make_word(3, 7, True, "DRAIN"),
         make_word(10, 1, True, "NAIL"),
         make_word(12, 7, True, "S_Y"),]
 
-Board.play_words(GAME)
+#Board.play_words(EXAMPLE_GAME)
 
+def try_hand():
+    Hand = Board.bag.choose_n_letters(7)
+    print(Hand)
+    for i in range(7, 1, -1):
+        valid_words = WORDS.intersection(permutations(''.join(Hand), i))
+        most_points = 0
+        most_point_words = []
+        for word in valid_words:
+            current_points = sum([points[letter] for letter in word])
+            if most_points < current_points:
+                most_points = current_points
+                most_point_words = [word]
+            elif most_points == current_points:
+                most_point_words.append(word)
+
+        print(most_points, most_point_words)
+            
+        
+    
+    
 
 
