@@ -337,7 +337,7 @@ EXAMPLE_GAME = [make_word(3, 7, True, "DRAIN"),
         make_word(10, 1, True, "NAIL"),
         make_word(12, 7, True, "S_Y"),]
 
-Board.play_words(EXAMPLE_GAME[:-3])
+Board.play_words(EXAMPLE_GAME)
 
 
 
@@ -351,36 +351,22 @@ def row_or_column_to_template(row):
     return template
 
 def fill_template_once(template, perm, gap_number):
-    length = len(perm)
-    start = [i for i, n in enumerate(template) if n == ''][gap_number] #template.index('', index)
+    gap_spot = [i for i, n in enumerate(template) if n == ''][gap_number]
     
     while perm != []:
-        template[template.index('', start)] = perm.pop(0)
-    while len(template) > start+length+1 and template[start+length].isalpha():
-        length += 1
-    extra_spaces = [i for i, n in enumerate(template[:start]) if n == '']
-    new_start = start
-    if extra_spaces != []:
-        new_start = extra_spaces[-1]
+        template[template.index('', gap_spot)] = perm.pop(0)
+        
+    gaps_before = [i for i, n in enumerate(template[:gap_spot]) if n == '']
+    start = 0
+    if gaps_before != []:
+        start = gaps_before[-1]+1
 
-##    if randrange(0,1000) == 713:
-##        print(new_start, length, perm, template)
-##        print(template[new_start:start+length+1])
-##        print(extra_spaces)
-##        print("----")
+    gaps_after = [i for i, n in enumerate(template[gap_spot:]) if n == '']
+    end = 15
+    if gaps_after:
+        end = gap_spot + gaps_after[0]
     
-    return template[new_start:start+length]
-
-def separate_words(filled_template):
-    last_cell = None
-    words = []
-    for cell in filled_template:
-        if last_cell and cell != '' and last_cell != '':
-            words[-1] = words[-1] + cell
-        elif cell != '':
-            words.append(cell)
-        last_cell = cell
-    return(words)
+    return template[start:end]
 
 def fill_templates(template, perms):
     result = []
@@ -388,8 +374,7 @@ def fill_templates(template, perms):
         perm = list(perm)
         total_gaps = sum([x == '' for x in template])
         for gap_number in range(total_gaps+1-len(perm)):
-            filled_template = fill_template_once(template.copy(), perm.copy(), gap_number)
-            [result.append(tuple(word)) for word in separate_words(filled_template)]
+            result.append(tuple(''.join(fill_template_once(template.copy(), perm.copy(), gap_number))))
     return result
     
 
@@ -398,8 +383,8 @@ def words_from_hand_in_template(Hand, template):
     for i in range(7, 1, -1):
         perms = permutations(''.join(Hand), i)
         valid_words = valid_words.union(WORDS.intersection(fill_templates(template, perms)))
-    if valid_words:
-        print(sorted(list(valid_words), key=lambda x: len(x), reverse=True))
+    #if valid_words:
+        #print(sorted(list(valid_words), key=lambda x: len(x), reverse=True))
 
 def grow_trues(boolean_list):
     result = []
