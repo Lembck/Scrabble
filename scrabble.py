@@ -135,6 +135,9 @@ class Scrabble:
     def get_row(self, y):
         return [self.board[x][y] for x in range(15)]
 
+    def get_column(self, x):
+        return self.board[x]
+
     def get_horizontal_word(self, x, y):
         if not self.cell_is_played(x, y):
             return False
@@ -335,11 +338,11 @@ EXAMPLE_GAME = [make_word(3, 7, True, "DRAIN"),
         make_word(10, 1, True, "NAIL"),
         make_word(12, 7, True, "S_Y"),]
 
-Board.play_word(EXAMPLE_GAME[0])
+Board.play_word(make_word(7, 7, True, "ACTION"))
 
 
 
-def row_to_template(row):
+def row_or_column_to_template(row):
     template = []
     for letter in row:
         if letter.isalpha():
@@ -363,22 +366,59 @@ def fill_template(template, perm):
 def fill_templates(template, perms):
     result = []
     for perm in perms:
+        perm = list(perm)
         total_gaps = sum([x == '' for x in template])
         for i in range(total_gaps-6):
             result.append(tuple(''.join(fill_template_once(template.copy(), perm.copy(), i))))
     return result
     
-Hand = list("BOARDER")
-row = Board.get_row(6)
-template = row_to_template(row)
-print(Hand)
-for i in range(7, 1, -1):
-    perms = permutations(''.join(Hand), i)
-    for perm in perms:
-        valid_words = WORDS.intersection(fill_template(template, list(perm)))
-        if valid_words:
-            print(valid_words)
-            break
+
+def words_from_hand_in_template(Hand, template):
+    valid_words = set()
+    for i in range(7, 1, -1):
+        perms = permutations(''.join(Hand), i)
+        valid_words = valid_words.union(WORDS.intersection(fill_templates(template, perms)))
+    if valid_words:
+        print(valid_words)
+
+def grow_trues(boolean_list):
+    result = []
+    for i in range(len(boolean_list)):
+        if boolean_list[i] or (i-1 >= 0 and boolean_list[i-1]) or (i+1 < len(boolean_list) and boolean_list[i+1]):
+            result.append(i)
+    return result
+
+def playable_rows():
+    rows_with_a_letter = []
+    for y in range(15):
+        rows_with_a_letter.append(any(cell.isalpha() for cell in Board.get_row(y)))
+    return(grow_trues(rows_with_a_letter))
+
+def playable_columns():
+    columns_with_a_letter = []
+    for x in range(15):
+        columns_with_a_letter.append(any(cell.isalpha() for cell in Board.get_column(x)))
+    return(grow_trues(columns_with_a_letter))
+        
+
+Hand = list("SATISFS")
+##print(Hand)
+##row = Board.get_row(7)
+##template = row_or_column_to_template(row)
+##print(template)
+##fill_template(template, list(list(permutations(''.join(Hand)))[0]))
+##print(fill_template(template, list(list(permutations(''.join(Hand)))[0])))
+##words_from_hand_in_template(Hand, template)
+for y in playable_rows():
+    print("Row", y)
+    row = Board.get_row(y)
+    template = row_or_column_to_template(row)
+    words_from_hand_in_template(Hand, template)
+for x in playable_columns():
+    print("Column", x)
+    column = Board.get_column(x)
+    template = row_or_column_to_template(column)
+    words_from_hand_in_template(Hand, template)
 
 def try_hand():
     Hand = Board.bag.choose_n_letters(7)
