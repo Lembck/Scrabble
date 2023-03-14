@@ -118,7 +118,7 @@ class Scrabble:
         return self.cell_is_in_bounds(x, y) and self.cell_is_alpha(x, y)
 
     def cell_is_placeable(self, x, y, letter):
-        if letter == "_":
+        if letter == "_" or letter == self.board[x][y]:
             return self.cell_is_played(x, y)
         return self.cell_is_unplayed(x, y)
 
@@ -205,35 +205,45 @@ class Scrabble:
         
         x_inc, y_inc = self.get_x_y_incs(word.direction)
         letter_range = range(len(word.text))
-        word_placeable = all(self.cell_is_placeable(word.x + x_inc * i, word.y + y_inc * i, word.text[i]) for i in letter_range)
+        try:
+            word_placeable = all(self.cell_is_placeable(word.x + x_inc * i, word.y + y_inc * i, word.text[i]) for i in letter_range)
+        except:
+            print(word)
 
         return word_placeable
 
 
-    def play_word(self, word, display = True):
+    def play_word(self, word, display = True, try_mode = False):
         cells_played = []
         multipliers = {}
+        overlapped = False
+        if word == (7, 3, 'H', ('D', 'R', 'A', 'I', 'N', 'A', 'G', 'E')):
+            print("YES")
 
         #is every other letter placeable (is there a letter on the board for _'s)
         x_inc, y_inc = self.get_x_y_incs(word.direction)
         if self.is_word_placeable(word):
             for i in range(len(word.text)):
                 x, y, letter = word.x + x_inc * i, word.y + y_inc * i, word.text[i]
-                if letter == "_" and self.cell_is_played(x, y):
+                if (letter == "_" or letter == self.board[x][y]) and self.cell_is_played(x, y):
+                    overlapped = True
                     multipliers[(x,y)] = (self.board[x][y], self.board[x][y])
-                    word.text = word.text[:i] + self.board[x][y] + word.text[i+1:]
+                    if letter == "_":
+                        word.text = word.text[:i] + self.board[x][y] + word.text[i+1:]
                     continue
                 
                 cells_played.append(Cell(x, y, self.board[x][y]))
                 multipliers[(x,y)] = (word.text[i], self.board[x][y])
                 self.set_letter(x, y, letter)
         else:
-            print("Please ensure the played word is on the board and doesn't overlap existing words", word.text)
+            if not try_mode:
+                print("Please ensure the played word is on the board and doesn't overlap existing words", word.text)
             return
 
         def error(*args):
             self.set_letters(cells_played)
-            print(*args)
+            if not try_mode:
+                print(*args)
             return
 
 
@@ -242,6 +252,7 @@ class Scrabble:
         final_word = self.get_word(word.x, word.y, word.direction)[0].text
         if not final_word or tuple(final_word) not in WORDS:
             error("Sorry, that is not a word", final_word)
+            return
 
         
         if self.fresh_game:
@@ -249,11 +260,13 @@ class Scrabble:
         else:
             side_words = self.get_side_words(word)
             
-            if all(side_word == False for side_word in side_words):
+            if all(side_word == False for side_word in side_words) and not overlapped:
                 error("Please ensure the played word touches existing words")
+                return
                 
             if any(side_word and tuple(side_word[0].text) not in WORDS for side_word in side_words):
                 error("Sorry, that word created an invalid side words", side_words)
+                return
 
             for side_word in side_words:
                 if side_word and side_word[0] not in self.words:
@@ -273,8 +286,13 @@ class Scrabble:
             self.display()
 
         self.words.append(word)
+
+        if try_mode:
+            self.set_letters(cells_played)
+
+        total_points = sum([x[1] for x in result])
         
-        return result
+        return (word, total_points)
         
 
     def play_words(self, words):
@@ -337,9 +355,7 @@ EXAMPLE_GAME = [make_word(3, 7, True, "DRAIN"),
         make_word(10, 1, True, "NAIL"),
         make_word(12, 7, True, "S_Y"),]
 
-Board.play_words(EXAMPLE_GAME)
-
-
+Board.play_word(EXAMPLE_GAME[0])
 
 def row_or_column_to_template(row):
     template = []
@@ -365,26 +381,36 @@ def fill_template_once(template, perm, gap_number):
     end = 15
     if gaps_after:
         end = gap_spot + gaps_after[0]
-    
-    return template[start:end]
+
+    return (template[start:end], start)
 
 def fill_templates(template, perms):
-    result = []
+    result = {}
     for perm in perms:
-        perm = list(perm)
         total_gaps = sum([x == '' for x in template])
         for gap_number in range(total_gaps+1-len(perm)):
-            result.append(tuple(''.join(fill_template_once(template.copy(), perm.copy(), gap_number))))
+            filled_template = fill_template_once(template.copy(), list(perm).copy(), gap_number)
+            word_as_tuple, start = tuple(''.join(filled_template[0])), filled_template[1]
+            
+            if word_as_tuple in result:
+                if start not in result[word_as_tuple]:
+                    result[word_as_tuple].append(start)
+            else:
+                result[word_as_tuple] = [start]
     return result
     
 
 def words_from_hand_in_template(Hand, template):
-    valid_words = set()
+    all_valid_words_w_starts = []
     for i in range(7, 1, -1):
-        perms = permutations(''.join(Hand), i)
-        valid_words = valid_words.union(WORDS.intersection(fill_templates(template, perms)))
-    #if valid_words:
-        #print(sorted(list(valid_words), key=lambda x: len(x), reverse=True))
+        perms = list(permutations(''.join(Hand), i))
+        words_w_starts = fill_templates(template, perms)
+        found_words = list(words_w_starts.keys())
+        valid_words = WORDS.intersection(found_words)
+        if valid_words:
+            valid_words_w_starts = [(word, words_w_starts[word]) for word in valid_words]
+            all_valid_words_w_starts.extend(valid_words_w_starts)
+    return all_valid_words_w_starts
 
 def grow_trues(boolean_list):
     result = []
@@ -407,38 +433,64 @@ def playable_columns():
         
 
 Hand = Board.bag.choose_n_letters(7)
-print(Hand)
-
-for y in playable_rows():
-    print("Row", y)
-    row = Board.get_row(y)
-    template = row_or_column_to_template(row)
-    words_from_hand_in_template(Hand, template)
-for x in playable_columns():
-    print("Column", x)
-    column = Board.get_column(x)
-    template = row_or_column_to_template(column)
-    words_from_hand_in_template(Hand, template)
-
-def try_hand():
-    Hand = Board.bag.choose_n_letters(7)
-    print(Hand)
-    for i in range(7, 1, -1):
-        valid_words = WORDS.intersection(permutations(''.join(Hand), i))
-        most_points = 0
-        most_point_words = []
-        for word in valid_words:
-            current_points = sum([points[letter] for letter in word])
-            if most_points < current_points:
-                most_points = current_points
-                most_point_words = [word]
-            elif most_points == current_points:
-                most_point_words.append(word)
-
-        print(most_points, most_point_words, valid_words)
-            
+##print(Hand)
+##row = Board.get_row(7)
+##template = row_or_column_to_template(row)
+##valid_words = words_from_hand_in_template(Hand, template)
+##print("VALID_WORDS", valid_words)
+##moves = []
+##for valid_word in valid_words:
+##    valid_word, spots = valid_word
+##    #results = [Board.play_word(make_word(8, spot, "V", valid_word), display=False, try_mode=False) for spot in spots]
+##    #print(valid_word, results)
+##    #results = sorted(results, key=lambda result: result[1])
+##    #print(results)
+##    for spot in spots:
+##        word = make_word(spot, 7, "H", valid_word)
+##        result = Board.play_word(word, display=False, try_mode=True)
+##        if result:
+##            moves.append(result)
+##            
+##moves = sorted(moves, key=lambda move: move[1], reverse=True)
+##print(moves)
         
+def all_possible_moves(Hand):
+    print("Generating all possible moves for: ", Hand)
+    templates = []
+    moves = []
+    for y in playable_rows():
+        print("Row", y)
+        row = Board.get_row(y)
+        template = row_or_column_to_template(row)
+        templates.append((template, -1, y))
+        valid_words = words_from_hand_in_template(Hand, template)
+        for valid_word in valid_words:
+            valid_word, spots = valid_word
+            for spot in spots:
+                word = make_word(spot, y, "H", valid_word)
+                result = Board.play_word(word, display=False, try_mode=True)
+                if result:
+                    moves.append(result)
+                    print(result)
+                    
     
-    
-
+        
+    for x in playable_columns():
+        print("Column", x)
+        column = Board.get_column(x)
+        template = row_or_column_to_template(column)
+        templates.append((template, x, -1))
+        valid_words = words_from_hand_in_template(Hand, template)
+        for valid_word in valid_words:
+            valid_word, spots = valid_word
+            for spot in spots:
+                word = make_word(x, spot, "V", valid_word)
+                result = Board.play_word(word, display=False, try_mode=True)
+                if result:
+                    moves.append(result)
+                    print(result)
+               
+    moves = sorted(moves, key=lambda move: move[1], reverse=True)
+    print(moves[:5])
+#all_possible_moves(Hand)
 
