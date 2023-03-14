@@ -255,9 +255,7 @@ class Scrabble:
             return
 
         
-        if self.fresh_game:
-            self.fresh_game = False
-        else:
+        if not self.fresh_game:
             side_words = self.get_side_words(word)
             
             if all(side_word == False for side_word in side_words) and not overlapped:
@@ -285,10 +283,11 @@ class Scrabble:
         if display:
             self.display()
 
-        self.words.append(word)
-
         if try_mode:
             self.set_letters(cells_played)
+        else:
+            self.words.append(word)
+            self.fresh_game = False
 
         total_points = sum([x[1] for x in result])
 
@@ -358,7 +357,7 @@ EXAMPLE_GAME = [make_word(3, 7, True, "DRAIN"),
         make_word(10, 1, True, "NAIL"),
         make_word(12, 7, True, "S_Y"),]
 
-Board.play_word(EXAMPLE_GAME[0])
+#Board.play_word(EXAMPLE_GAME[0])
 
 def row_or_column_to_template(row):
     template = []
@@ -423,19 +422,24 @@ def grow_trues(boolean_list):
     return result
 
 def playable_rows():
+    if Board.fresh_game:
+        return [7]
     rows_with_a_letter = []
     for y in range(15):
         rows_with_a_letter.append(any(cell.isalpha() for cell in Board.get_row(y)))
     return(grow_trues(rows_with_a_letter))
 
 def playable_columns():
+    if Board.fresh_game:
+        return [7]
     columns_with_a_letter = []
     for x in range(15):
         columns_with_a_letter.append(any(cell.isalpha() for cell in Board.get_column(x)))
     return(grow_trues(columns_with_a_letter))
         
 
-Hand = Board.bag.choose_n_letters(7)
+Hand = ['A', 'N', 'I', 'E', 'R', 'N', 'U']
+#Board.bag.choose_n_letters(7)
         
 def all_possible_moves(Hand):
     print("Generating all possible moves for: ", Hand)
@@ -463,8 +467,6 @@ def all_possible_moves(Hand):
         valid_words = words_from_hand_in_template(Hand, template)
         for valid_word in valid_words:
             valid_word, spots = valid_word
-            if valid_word == tuple("BAINITE"):
-                print(valid_word, spots)
             for spot in spots:
                 word = make_word(x, spot, False, valid_word)
                 result = Board.play_word(word, display=False, try_mode=True)
