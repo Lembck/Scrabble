@@ -337,7 +337,7 @@ EXAMPLE_GAME = [make_word(3, 7, True, "DRAIN"),
         make_word(10, 1, True, "NAIL"),
         make_word(12, 7, True, "S_Y"),]
 
-Board.play_words(EXAMPLE_GAME)
+Board.play_words(EXAMPLE_GAME[:-3])
 
 
 
@@ -350,14 +350,26 @@ def row_or_column_to_template(row):
             template.append('')
     return template
 
-def fill_template_once(template, perm, index):
+def fill_template_once(template, perm, gap_number):
     length = len(perm)
-    start = template.index('', index)
+    start = [i for i, n in enumerate(template) if n == ''][gap_number] #template.index('', index)
+    
     while perm != []:
-        template[template.index('', index)] = perm.pop(0)
-    #if randrange(0,200000) == 713:
-    #    print(template)
-    return template[start:start+length]
+        template[template.index('', start)] = perm.pop(0)
+    while len(template) > start+length+1 and template[start+length].isalpha():
+        length += 1
+    extra_spaces = [i for i, n in enumerate(template[:start]) if n == '']
+    new_start = start
+    if extra_spaces != []:
+        new_start = extra_spaces[-1]
+
+##    if randrange(0,1000) == 713:
+##        print(new_start, length, perm, template)
+##        print(template[new_start:start+length+1])
+##        print(extra_spaces)
+##        print("----")
+    
+    return template[new_start:start+length]
 
 def separate_words(filled_template):
     last_cell = None
@@ -375,8 +387,8 @@ def fill_templates(template, perms):
     for perm in perms:
         perm = list(perm)
         total_gaps = sum([x == '' for x in template])
-        for i in range(total_gaps+1-len(perm)):
-            filled_template = fill_template_once(template.copy(), perm.copy(), i)
+        for gap_number in range(total_gaps+1-len(perm)):
+            filled_template = fill_template_once(template.copy(), perm.copy(), gap_number)
             [result.append(tuple(word)) for word in separate_words(filled_template)]
     return result
     
@@ -409,7 +421,7 @@ def playable_columns():
     return(grow_trues(columns_with_a_letter))
         
 
-Hand = ['W', 'L', 'I', 'T', 'I', 'T', 'F']#Board.bag.choose_n_letters(7)
+Hand = Board.bag.choose_n_letters(7)
 print(Hand)
 
 for y in playable_rows():
