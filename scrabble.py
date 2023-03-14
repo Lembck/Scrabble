@@ -132,6 +132,9 @@ class Scrabble:
         for cell in cells:
             self.set_letter(cell.x, cell.y, cell.letter)
 
+    def get_row(self, y):
+        return [self.board[x][y] for x in range(15)]
+
     def get_horizontal_word(self, x, y):
         if not self.cell_is_played(x, y):
             return False
@@ -332,7 +335,50 @@ EXAMPLE_GAME = [make_word(3, 7, True, "DRAIN"),
         make_word(10, 1, True, "NAIL"),
         make_word(12, 7, True, "S_Y"),]
 
-#Board.play_words(EXAMPLE_GAME)
+Board.play_word(EXAMPLE_GAME[0])
+
+
+
+def row_to_template(row):
+    template = []
+    for letter in row:
+        if letter.isalpha():
+            template.append(letter)
+        else:
+            template.append('')
+    return template
+
+def fill_template_once(template, perm, index):
+    while perm != []:
+        template[template.index('', index)] = perm.pop(0)
+    return template
+
+def fill_template(template, perm):
+    total_gaps = sum([x == '' for x in template])
+    result = []
+    for i in range(total_gaps-6):
+        result.append(tuple(''.join(fill_template_once(template.copy(), perm.copy(), i))))
+    return result
+
+def fill_templates(template, perms):
+    result = []
+    for perm in perms:
+        total_gaps = sum([x == '' for x in template])
+        for i in range(total_gaps-6):
+            result.append(tuple(''.join(fill_template_once(template.copy(), perm.copy(), i))))
+    return result
+    
+Hand = list("BOARDER")
+row = Board.get_row(6)
+template = row_to_template(row)
+print(Hand)
+for i in range(7, 1, -1):
+    perms = permutations(''.join(Hand), i)
+    for perm in perms:
+        valid_words = WORDS.intersection(fill_template(template, list(perm)))
+        if valid_words:
+            print(valid_words)
+            break
 
 def try_hand():
     Hand = Board.bag.choose_n_letters(7)
@@ -349,7 +395,7 @@ def try_hand():
             elif most_points == current_points:
                 most_point_words.append(word)
 
-        print(most_points, most_point_words)
+        print(most_points, most_point_words, valid_words)
             
         
     
