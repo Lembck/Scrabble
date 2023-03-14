@@ -266,7 +266,6 @@ class Scrabble:
                             return multipliers[letter_spot][1]
                         return ' '
                     side_word_multipliers = [(text[i], calculate_multiplier(i)) for i in range(len(text))]
-                    print(text, side_word_multipliers)
                     result.append((text, self.calculate_points(side_word_multipliers)))
                     self.words.append(side_word[0])
 
@@ -338,7 +337,7 @@ EXAMPLE_GAME = [make_word(3, 7, True, "DRAIN"),
         make_word(10, 1, True, "NAIL"),
         make_word(12, 7, True, "S_Y"),]
 
-Board.play_word(make_word(7, 7, True, "ACTION"))
+Board.play_words(EXAMPLE_GAME)
 
 
 
@@ -352,24 +351,32 @@ def row_or_column_to_template(row):
     return template
 
 def fill_template_once(template, perm, index):
+    length = len(perm)
     while perm != []:
         template[template.index('', index)] = perm.pop(0)
-    return template
+    #if randrange(0,200000) == 713:
+    #    print(template)
+    return template[index:index+length]
 
-def fill_template(template, perm):
-    total_gaps = sum([x == '' for x in template])
-    result = []
-    for i in range(total_gaps-6):
-        result.append(tuple(''.join(fill_template_once(template.copy(), perm.copy(), i))))
-    return result
+def separate_words(filled_template):
+    last_cell = None
+    words = []
+    for cell in filled_template:
+        if last_cell and cell != '' and last_cell != '':
+            words[-1] = words[-1] + cell
+        elif cell != '':
+            words.append(cell)
+        last_cell = cell
+    return(words)
 
 def fill_templates(template, perms):
     result = []
     for perm in perms:
         perm = list(perm)
         total_gaps = sum([x == '' for x in template])
-        for i in range(total_gaps-6):
-            result.append(tuple(''.join(fill_template_once(template.copy(), perm.copy(), i))))
+        for i in range(total_gaps+1-len(perm)):
+            filled_template = fill_template_once(template.copy(), perm.copy(), i)
+            [result.append(tuple(word)) for word in separate_words(filled_template)]
     return result
     
 
@@ -401,14 +408,9 @@ def playable_columns():
     return(grow_trues(columns_with_a_letter))
         
 
-Hand = list("SATISFS")
-##print(Hand)
-##row = Board.get_row(7)
-##template = row_or_column_to_template(row)
-##print(template)
-##fill_template(template, list(list(permutations(''.join(Hand)))[0]))
-##print(fill_template(template, list(list(permutations(''.join(Hand)))[0])))
-##words_from_hand_in_template(Hand, template)
+Hand = Board.bag.choose_n_letters(7)
+print(Hand)
+
 for y in playable_rows():
     print("Row", y)
     row = Board.get_row(y)
