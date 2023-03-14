@@ -217,6 +217,7 @@ class Scrabble:
         cells_played = []
         multipliers = {}
         overlapped = False
+        letters_used = len(word.text)
         
         #is every other letter placeable (is there a letter on the board for _'s)
         x_inc, y_inc = self.get_x_y_incs(word.direction)
@@ -226,6 +227,7 @@ class Scrabble:
                 if (letter == "_" or letter == self.board[x][y]) and self.cell_is_played(x, y):
                     overlapped = True
                     multipliers[(x,y)] = (self.board[x][y], self.board[x][y])
+                    letters_used -= 1
                     if letter == "_":
                         word.text = word.text[:i] + self.board[x][y] + word.text[i+1:]
                     continue
@@ -289,6 +291,9 @@ class Scrabble:
             self.set_letters(cells_played)
 
         total_points = sum([x[1] for x in result])
+
+        if letters_used == 7:
+            total_points += 50
         
         return (word, total_points)
         
@@ -431,26 +436,6 @@ def playable_columns():
         
 
 Hand = Board.bag.choose_n_letters(7)
-##print(Hand)
-##row = Board.get_row(7)
-##template = row_or_column_to_template(row)
-##valid_words = words_from_hand_in_template(Hand, template)
-##print("VALID_WORDS", valid_words)
-##moves = []
-##for valid_word in valid_words:
-##    valid_word, spots = valid_word
-##    #results = [Board.play_word(make_word(8, spot, "V", valid_word), display=False, try_mode=False) for spot in spots]
-##    #print(valid_word, results)
-##    #results = sorted(results, key=lambda result: result[1])
-##    #print(results)
-##    for spot in spots:
-##        word = make_word(spot, 7, "H", valid_word)
-##        result = Board.play_word(word, display=False, try_mode=True)
-##        if result:
-##            moves.append(result)
-##            
-##moves = sorted(moves, key=lambda move: move[1], reverse=True)
-##print(moves)
         
 def all_possible_moves(Hand):
     print("Generating all possible moves for: ", Hand)
@@ -464,7 +449,7 @@ def all_possible_moves(Hand):
         for valid_word in valid_words:
             valid_word, spots = valid_word
             for spot in spots:
-                word = make_word(spot, y, "H", valid_word)
+                word = make_word(spot, y, True, valid_word)
                 result = Board.play_word(word, display=False, try_mode=True)
                 if result:
                     moves.append(result)
@@ -478,8 +463,10 @@ def all_possible_moves(Hand):
         valid_words = words_from_hand_in_template(Hand, template)
         for valid_word in valid_words:
             valid_word, spots = valid_word
+            if valid_word == tuple("BAINITE"):
+                print(valid_word, spots)
             for spot in spots:
-                word = make_word(x, spot, "V", valid_word)
+                word = make_word(x, spot, False, valid_word)
                 result = Board.play_word(word, display=False, try_mode=True)
                 if result:
                     moves.append(result)
