@@ -254,18 +254,18 @@ class Scrabble:
             error("Sorry, that is not a word", final_word)
             return
 
-        
+
         if not self.fresh_game:
             side_words = self.get_side_words(word)
             
             if all(side_word == False for side_word in side_words) and not overlapped:
                 error("Please ensure the played word touches existing words")
                 return
-                
+            
             if any(side_word and tuple(side_word[0].text) not in WORDS for side_word in side_words):
                 error("Sorry, that word created an invalid side words", side_words)
                 return
-
+            
             for side_word in side_words:
                 if side_word and side_word[0] not in self.words:
                     text = side_word[0].text
@@ -278,7 +278,8 @@ class Scrabble:
                         return ' '
                     side_word_multipliers = [(text[i], calculate_multiplier(i)) for i in range(len(text))]
                     result.append((text, self.calculate_points(side_word_multipliers)))
-                    self.words.append(side_word[0])
+                    if not try_mode:
+                        self.words.append(side_word[0])
 
         if display:
             self.display()
@@ -299,7 +300,7 @@ class Scrabble:
 
     def play_words(self, words):
         for word in words:
-            self.play_word(word, False)
+            print(self.play_word(word, False))
         self.display()
         
 
@@ -438,8 +439,7 @@ def playable_columns():
     return(grow_trues(columns_with_a_letter))
         
 
-Hand = ['A', 'N', 'I', 'E', 'R', 'N', 'U']
-#Board.bag.choose_n_letters(7)
+Hand = Board.bag.choose_n_letters(7)
         
 def all_possible_moves(Hand):
     print("Generating all possible moves for: ", Hand)
@@ -474,6 +474,24 @@ def all_possible_moves(Hand):
                     moves.append(result)
                
     moves = sorted(moves, key=lambda move: move[1], reverse=True)
-    print(moves[:5])
-all_possible_moves(Hand)
+    [print(move) for move in moves[:5]] 
+#)all_possible_moves(Hand)
 
+
+EXAMPLE_GAME2 = [make_word(7,7,True,"CREAK"),
+                 make_word(10,1,False,"VIHUEL_"),
+                 make_word(12,7,False,"SHIMMED"),
+                 make_word(9, 13, True, "WADDY"),
+                 make_word(9, 14, True, "OY"),
+                 make_word(9, 10, True, "FRUMP"),
+                 make_word(14, 4, False, "BOUGIES"),
+                 make_word(7, 0, False, "BACTERI_"),
+                 make_word(6, 6, True, "Q_")]
+Board.play_words(EXAMPLE_GAME2[:-1])
+
+#all_possible_moves("ABCRITE")
+#print(Board.play_word(make_word(7, 0, False, "BACTERI_")))
+#all_possible_moves("EENRTZQ")
+#print(Board.play_word(make_word(6, 6, True, "Q_")))
+all_possible_moves("DINOOTT")
+print(Board.play_word(make_word(11, 2, False, "DOT")))
