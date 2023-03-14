@@ -217,9 +217,7 @@ class Scrabble:
         cells_played = []
         multipliers = {}
         overlapped = False
-        if word == (7, 3, 'H', ('D', 'R', 'A', 'I', 'N', 'A', 'G', 'E')):
-            print("YES")
-
+        
         #is every other letter placeable (is there a letter on the board for _'s)
         x_inc, y_inc = self.get_x_y_incs(word.direction)
         if self.is_word_placeable(word):
@@ -459,7 +457,6 @@ def all_possible_moves(Hand):
     templates = []
     moves = []
     for y in playable_rows():
-        print("Row", y)
         row = Board.get_row(y)
         template = row_or_column_to_template(row)
         templates.append((template, -1, y))
@@ -471,12 +468,10 @@ def all_possible_moves(Hand):
                 result = Board.play_word(word, display=False, try_mode=True)
                 if result:
                     moves.append(result)
-                    print(result)
                     
     
         
     for x in playable_columns():
-        print("Column", x)
         column = Board.get_column(x)
         template = row_or_column_to_template(column)
         templates.append((template, x, -1))
@@ -488,9 +483,8 @@ def all_possible_moves(Hand):
                 result = Board.play_word(word, display=False, try_mode=True)
                 if result:
                     moves.append(result)
-                    print(result)
                
     moves = sorted(moves, key=lambda move: move[1], reverse=True)
     print(moves[:5])
-#all_possible_moves(Hand)
+all_possible_moves(Hand)
 
